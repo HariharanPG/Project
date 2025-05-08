@@ -1,0 +1,252 @@
+#include <EveryTimer.h>
+#define PERIOD_MS 1000
+EveryTimer timer;
+
+#include <TinyGPS++.h>
+#include <SoftwareSerial.h>
+SoftwareSerial GPS_SoftSerial(D3, D4);
+TinyGPSPlus gps;    
+
+
+#include <LCD_I2C.h>
+LCD_I2C lcd(0x27);
+
+
+volatile float minutes, seconds;
+volatile int degree, secs, mins;
+float latn,longn;
+
+double lat_val, lng_val, alt_m_val;
+uint8_t hr_val, min_val, sec_val;
+bool loc_valid, alt_valid, time_valid;
+
+
+unsigned int m=0,val,val1,val2,val3,val4,val5;
+int act=0;
+String inputString = ""; 
+unsigned char a[200];
+int alcvalue,facestate;
+String s = "www.google.com/maps/dir/"; 
+
+#define BLYNK_PRINT Serial
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+
+
+const char* ssid     = "IOT"; 
+const char* password = "123456789"; 
+
+#define BLYNK_TEMPLATE_ID "TMPL3jA3S4D1v"
+#define BLYNK_TEMPLATE_NAME "OBJECT DETECTION  SPEED CONTROL"
+#define BLYNK_AUTH_TOKEN "8PTQ2V_Wqaa5Q3BpVVlZ82QkYoz_mWP9"
+
+char auth[] = BLYNK_AUTH_TOKEN;
+
+
+
+void setup() {
+  // put your setup code here, to run once:
+   Serial.begin(9600);
+    GPS_SoftSerial.begin(9600);
+    lcd.begin(); 
+    lcd.backlight();
+    lcd.setCursor(0, 0);
+    lcd.print("OBJECT DETECTION");
+    lcd.setCursor(0, 1);
+    lcd.print("SPEED CONTROL");
+    lcd.clear();
+Blynk.begin(auth, ssid, password, "blynk.cloud",80);
+
+
+}
+
+void loop() {
+
+4rec();
+gpsread();
+
+delay(200);
+Blynk.run();
+
+Serial.print("VAL : ");
+Serial.println(val);
+Serial.print("VAL1 : ");
+Serial.println(val1);
+Serial.print("VAL2 : ");
+Serial.println(val2);
+delay(300);
+
+ lcd.setCursor(10,0);
+ lcd.print("D:");
+ lcd.setCursor(12,0); 
+if(val <= 9){lcd.print("00");lcd.print(val);}
+else if(val <= 99){lcd.print("0");lcd.print(val);}
+else if(val <= 999){lcd.print(val);}
+delay(300); 
+
+
+if (val>1 && val<30 && val2==1)
+{
+ Blynk.logEvent("msg","OBJECT DETECTED");  
+ Blynk.virtualWrite(V3,"OBJECT DETECTED");
+ Blynk.virtualWrite(V2,"TRAIN SPEED : 20");
+ lcd.setCursor(0, 0);
+ lcd.print("OBJECT DETECTED");
+ delay(2000);
+ lcd.clear();
+ Blynk.virtualWrite(V3,"               "); 
+ Blynk.logEvent("msg","                ");
+ lcd.setCursor(0, 1);
+ lcd.print("TRAIN SPEED : 20");
+}
+
+if (val1==1 && val2==1)
+{
+ Blynk.logEvent("msg","NEAR TO SINGANL");  
+ Blynk.virtualWrite(V3,"NEAR TO SINGANL");
+ lcd.setCursor(0, 0);
+ lcd.print("NEAR TO SINGANL");
+ Blynk.virtualWrite(V2,"TRAIN SPEED : 20");
+ delay(2000);
+ lcd.clear();
+ Blynk.virtualWrite(V3,"               "); 
+  Blynk.logEvent("msg","                ");
+ lcd.setCursor(0, 1);
+ lcd.print("TRAIN SPEED : 20");
+}
+
+if (val2==1)
+{  
+ Blynk.virtualWrite(V3,"TRAIN MOVING");
+ Blynk.virtualWrite(V2,"TRAIN SPEED : 50"); 
+ lcd.setCursor(0, 1);
+ lcd.print("TRAIN SPEED : 50");
+}
+
+else if(val2==0)
+{  
+ Blynk.virtualWrite(V3,"TRAIN STOP");
+ Blynk.virtualWrite(V2,"TRAIN SPEED : 00");
+ lcd.setCursor(0, 1);
+ lcd.print("TRAIN SPEED : 00");
+}
+
+
+ Blynk.virtualWrite(V0,"TRAIN NUMBER : 1226688");
+ Blynk.virtualWrite(V4,"CBE JN NORTH");
+
+  
+}
+void gpsread()
+  {
+    
+       smartDelay(200); /* Generate precise delay of 1ms */
+        unsigned long start;
+   
+        lat_val = gps.location.lat(); /* Get latitude data */
+        loc_valid = gps.location.isValid(); /* Check if valid location data is available */
+        lng_val = gps.location.lng(); /* Get longtitude data */
+        alt_m_val = gps.altitude.meters();  /* Get altitude data in meters */
+        alt_valid = gps.altitude.isValid(); /* Check if valid altitude data is available */
+        hr_val = gps.time.hour(); /* Get hour */
+        min_val = gps.time.minute();  /* Get minutes */
+        sec_val = gps.time.second();  /* Get seconds */
+        time_valid = gps.time.isValid();  /* Check if valid time data is available */
+      
+            
+        if (!loc_valid)
+        {    
+                
+          Serial.print("Latitude : ");
+          Serial.println("*");
+          Serial.print("Longitude : ");
+          Serial.println("*");
+        }
+        else
+        {
+          DegMinSec(lat_val);
+       
+          DegMinSec(lng_val); /* Convert the decimal degree value into degrees minutes seconds form */
+        
+          longn=(lng_val, 6);
+      
+        }
+        if (!alt_valid)
+        {
+          
+        }
+        else
+        {
+         
+        }
+        if (!time_valid)
+        {
+          
+        }
+        else
+        {
+          char time_string[32];
+          sprintf(time_string, "Time : %02d/%02d/%02d \n", hr_val, min_val, sec_val);
+          Serial.print(time_string);    
+        }
+   
+
+if(!alt_valid){lat_val=11.1004301;lng_val=77.0266116;}
+
+s = "www.google.com/maps/dir/";
+s += String(lat_val, 6);
+  s += ",";
+  s += String(lng_val, 6);
+  s += "/";
+ Blynk.virtualWrite(V1,s);
+  
+  }
+
+
+
+
+  static void smartDelay(unsigned long ms)
+{
+  unsigned long start = millis();
+  do 
+  {
+    while (GPS_SoftSerial.available())  /* Encode data read from GPS while data is available on serial port */
+      gps.encode(GPS_SoftSerial.read());
+/* Encode basically is used to parse the string received by the GPS and to store it in a buffer so that information can be extracted from it */
+  } while (millis() - start < ms);
+}
+
+void DegMinSec( double tot_val)   /* Convert data in decimal degrees into degrees minutes seconds form */
+{  
+  degree = (int)tot_val;
+  minutes = tot_val - degree;
+  seconds = 60 * minutes;
+  minutes = (int)seconds;
+  mins = (int)minutes;
+  seconds = seconds - minutes;
+  seconds = 60 * seconds;
+  secs = (int)seconds;
+}
+void rec()
+{
+while(Serial.available())
+{
+char data;
+data=Serial.read();
+  
+a[m]=data;
+if(a[0] == '*')
+{
+if(m<=9)
+{m++;}
+}
+}
+
+if(m > 1)
+      {
+val = (a[1]-0x30)*100 + (a[2]-0x30)*10  + (a[3] - 0x30);
+val1 = (a[4]-0x30)*100 + (a[5]-0x30)*10  + (a[6] - 0x30);
+val2 = (a[7]-0x30)*100 + (a[8]-0x30)*10  + (a[9] - 0x30);
+m=0;
+}
+}

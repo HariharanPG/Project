@@ -1,0 +1,142 @@
+
+
+#include <Wire.h> 
+#include <LCD_I2C.h>
+#define rf 7
+#define PWM1 8
+#define PWM2 9
+#define button 6
+LCD_I2C lcd(0x27);
+int trigPin = 14;    // Trigger
+int echoPin = 15 ;    // Echo
+long duration, cm, inches,rfval,act,buttonval;
+
+
+int lm1=10; //left motor output 1
+int lm2=11; //left motor output 2
+int rm1=12;  //right motor output 1
+int rm2=13;  //right motor output 2
+
+
+
+ 
+void setup ( ) {
+Serial.begin(9600);
+Wire.begin(); // gpio 2 and gpio 0 which are D4, and D3
+lcd.begin();                 //Init the LCD
+lcd.backlight();            //Activate backlight     
+lcd.home();    
+pinMode(trigPin, OUTPUT);
+pinMode(echoPin, INPUT);
+pinMode(rf, INPUT);
+pinMode(PWM1,INPUT);
+pinMode(PWM2,INPUT);
+pinMode(button,INPUT_PULLUP);
+pinMode(lm1,OUTPUT);
+pinMode(lm2,OUTPUT);
+pinMode(rm1,OUTPUT);
+pinMode(rm2,OUTPUT);
+stop();
+Serial1.setTX(16);
+Serial1.setRX(17);
+Serial1.begin(9600);
+
+ }
+ void loop ( ) 
+ {
+digitalWrite(trigPin, LOW);
+delayMicroseconds(5);
+digitalWrite(trigPin, HIGH);
+delayMicroseconds(10);
+digitalWrite(trigPin, LOW);
+pinMode(echoPin, INPUT);
+duration = pulseIn(echoPin, HIGH);
+
+Serial.print("BUTTON : ");
+Serial.println(digitalRead(button));
+
+Serial.print("ACT : ");
+Serial.println(act);
+
+Serial.print("RF :");
+Serial.println(digitalRead(rf));
+rfval=(digitalRead(rf))
+
+analogWrite(PWM1,250);
+analogWrite(PWM2,250);
+
+
+// Convert the time into a distance
+cm = (duration/2) / 29.1;     
+inches = (duration/2) / 74; 
+Serial.print("VOL : ");
+Serial.println(cm);     
+
+  if(((cm>=1 && cm=<30) || digitalRead(rf)==1) && (act == 1))
+  {
+   senddata();   senddata();    senddata();
+  Serial.print("TRAIN SLOWDOWN");
+  analogWrite(PWM1,120);
+  analogWrite(PWM2,120);
+  delay(3000);
+  }
+if(digitalRead(button)==0)
+{
+  Serial.print("button press");
+  act=act^1;
+  while (digitalRead(button)==0);
+}
+
+if(act==1)
+{
+ forward(); 
+}
+
+
+else if(act==0)
+{
+  stop();
+}
+senddata();
+}
+
+
+void forward()
+{
+Serial.println("forwaed");
+digitalWrite(lm1,HIGH);
+digitalWrite(lm2,LOW);
+digitalWrite(rm1,HIGH);
+digitalWrite(rm2,LOW);
+}
+
+
+void stop()
+{
+Serial.println("stop");
+digitalWrite(lm1,LOW);
+digitalWrite(lm2,LOW);
+digitalWrite(rm1,LOW);
+digitalWrite(rm2,LOW);
+}
+void senddata()
+{
+  Serial1.print('*');
+
+  //ULTRA VALUE SEND
+  if(cm <= 9){Serial1.print("00");Serial1.print(cm);}
+  else if(cm <= 99){Serial1.print("0");Serial1.print(cm);}
+  else if(cm <= 999){Serial1.print(cm);}
+
+   //RFVAL VALUE SEND
+  if(rfval <= 9){Serial1.print("00");Serial1.print(rfval);}
+  else if(rfval <= 99){Serial1.print("0");Serial1.print(rfval);}
+  else if(rfval <= 999){Serial1.print(rfval);}
+
+  //BUTTON VAL VALUE SEND
+  if(act <= 9){Serial1.print("00");Serial1.print(act);}
+  else if(act <= 99){Serial1.print("0");Serial1.print(act);}
+  else if(act <= 999){Serial1.print(act);}
+
+  
+}
