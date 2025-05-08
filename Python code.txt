@@ -1,0 +1,67 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score, classification_report
+import matplotlib.pyplot as plt
+
+# Step 1: Simulate EMG Signal
+def simulate_emg(gesture_type, samples=1000):
+    t = np.linspace(0, 0.2, samples)  # 200ms
+    if gesture_type == 'Hand Open':
+        signal = 0.3 * np.sin(2 * np.pi * 50 * t) + 0.1 * np.random.randn(samples)
+    elif gesture_type == 'Hand Close':
+        signal = 0.6 * np.sin(2 * np.pi * 50 * t) + 0.2 * np.random.randn(samples)
+    elif gesture_type == 'Fist Clench':
+        signal = 0.9 * np.sin(2 * np.pi * 50 * t) + 0.3 * np.random.randn(samples)
+    return signal
+
+# Step 2: Feature Extraction
+def extract_features(signal):
+    rms = np.sqrt(np.mean(signal ** 2))
+    mav = np.mean(np.abs(signal))
+    zcr = ((signal[:-1] * signal[1:]) < 0).sum()
+    return rms, mav, zcr
+
+# Step 3: Generate Dataset
+data = []
+labels = []
+gestures = ['Hand Open', 'Hand Close', 'Fist Clench']
+for gesture in gestures:
+    for _ in range(30):  # 30 samples per gesture
+        sig = simulate_emg(gesture)
+        features = extract_features(sig)
+        data.append(features)
+        labels.append(gesture)
+
+# Step 4: Convert to DataFrame
+df = pd.DataFrame(data, columns=['RMS', 'MAV', 'ZCR'])
+df['Label'] = labels
+
+# Step 5: Preprocess
+X = df[['RMS', 'MAV', 'ZCR']].values
+y = LabelEncoder().fit_transform(df['Label'])
+
+# Step 6: Train-Test Split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Step 7: KNN Classification
+knn = KNeighborsClassifier(n_neighbors=3)
+knn.fit(X_train, y_train)
+
+# Step 8: Prediction and Evaluation
+y_pred = knn.predict(X_test)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
+
+# Step 9: Visualization
+plt.figure(figsize=(8, 6))
+for i, label in enumerate(np.unique(y)):
+    plt.scatter(X[y == label][:, 0], X[y == label][:, 1], label=gestures[i], alpha=0.7)
+plt.xlabel("RMS")
+plt.ylabel("MAV")
+plt.title("Feature Space: RMS vs MAV")
+plt.legend()
+plt.grid(True)
+plt.show()
